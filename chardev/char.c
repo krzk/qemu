@@ -100,6 +100,7 @@ static int qemu_chr_fe_write_buffer(Chardev *s,
 {
     const ChardevClass *cc = CHARDEV_GET_CLASS(s);
     int res = 0;
+
     *offset = 0;
 
     qemu_mutex_lock(&s->chr_write_lock);
