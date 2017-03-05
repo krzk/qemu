@@ -430,7 +430,7 @@ void qemu_chr_fe_accept_input(CharBackend *be);
 int qemu_chr_add_client(Chardev *s, int fd);
 Chardev *qemu_chr_find(const char *name);
 
-bool qemu_chr_has_feature(Chardev *chr,
+bool qemu_chr_has_feature(const Chardev *chr,
                           ChardevFeature feature);
 void qemu_chr_set_feature(Chardev *chr,
                           ChardevFeature feature);

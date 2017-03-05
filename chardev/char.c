@@ -98,7 +98,7 @@ static void qemu_chr_fe_write_log(Chardev *s,
 static int qemu_chr_fe_write_buffer(Chardev *s,
                                     const uint8_t *buf, int len, int *offset)
 {
-    ChardevClass *cc = CHARDEV_GET_CLASS(s);
+    const ChardevClass *cc = CHARDEV_GET_CLASS(s);
     int res = 0;
     *offset = 0;
 
@@ -125,7 +125,7 @@ static int qemu_chr_fe_write_buffer(Chardev *s,
     return res;
 }
 
-static bool qemu_chr_replay(Chardev *chr)
+static bool qemu_chr_replay(const Chardev *chr)
 {
     return qemu_chr_has_feature(chr, QEMU_CHAR_FEATURE_REPLAY);
 }
@@ -133,7 +133,7 @@ static bool qemu_chr_replay(Chardev *chr)
 int qemu_chr_fe_write(CharBackend *be, const uint8_t *buf, int len)
 {
     Chardev *s = be->chr;
-    ChardevClass *cc;
+    const ChardevClass *cc;
     int ret;
 
     if (!s) {
@@ -365,7 +365,7 @@ void qemu_chr_fe_printf(CharBackend *be, const char *fmt, ...)
 static void qemu_char_open(Chardev *chr, ChardevBackend *backend,
                            bool *be_opened, Error **errp)
 {
-    ChardevClass *cc = CHARDEV_GET_CLASS(chr);
+    const ChardevClass *cc = CHARDEV_GET_CLASS(chr);
     /* Any ChardevCommon member would work */
     ChardevCommon *common = backend ? backend->u.null.data : NULL;
 
@@ -507,10 +507,10 @@ unavailable:
     return false;
 }
 
-static bool qemu_chr_is_busy(Chardev *s)
+static bool qemu_chr_is_busy(const Chardev *s)
 {
     if (CHARDEV_IS_MUX(s)) {
-        MuxChardev *d = MUX_CHARDEV(s);
+        const MuxChardev *d = MUX_CHARDEV(s);
         return d->mux_cnt >= 0;
     } else {
         return s->be != NULL;
@@ -543,7 +543,7 @@ void qemu_chr_fe_set_handlers(CharBackend *b,
                               bool set_open)
 {
     Chardev *s;
-    ChardevClass *cc;
+    const ChardevClass *cc;
     int fe_open;
 
     s = b->chr;
@@ -597,7 +597,7 @@ void qemu_chr_fe_take_focus(CharBackend *b)
 
 int qemu_chr_wait_connected(Chardev *chr, Error **errp)
 {
-    ChardevClass *cc = CHARDEV_GET_CLASS(chr);
+    const ChardevClass *cc = CHARDEV_GET_CLASS(chr);
 
     if (cc->chr_wait_connected) {
         return cc->chr_wait_connected(chr, errp);
@@ -1202,7 +1202,7 @@ QemuOptsList qemu_chardev_opts = {
     },
 };
 
-bool qemu_chr_has_feature(Chardev *chr,
+bool qemu_chr_has_feature(const Chardev *chr,
                           ChardevFeature feature)
 {
     return test_bit(feature, chr->features);
