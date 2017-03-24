@@ -78,6 +78,9 @@
 /* Clock controller SFR base address */
 #define EXYNOS4210_CLK_BASE_ADDR            0x10030000
 
+/* Clock controller SFR base address */
+#define EXYNOS4210_WDT_BASE_ADDR            0x10060000
+
 /* PRNG/HASH SFR base address */
 #define EXYNOS4210_RNG_BASE_ADDR            0x10830400
 
@@ -318,6 +321,7 @@ Exynos4210State *exynos4210_init(MemoryRegion *system_mem,
 
     sysbus_create_simple("exynos4210.clk", EXYNOS4210_CLK_BASE_ADDR, NULL);
     sysbus_create_simple("exynos4210.rng", EXYNOS4210_RNG_BASE_ADDR, NULL);
+    sysbus_create_simple("exynos4210.wdt", EXYNOS4210_WDT_BASE_ADDR, NULL);
 
     /* PWM */
     sysbus_create_varargs("exynos4210.pwm", EXYNOS4210_PWM_BASE_ADDR,
