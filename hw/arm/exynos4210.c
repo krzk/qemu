@@ -142,7 +142,7 @@ void exynos4210_write_secondary(ARMCPU *cpu,
                        info->smp_loader_start);
 }
 
-static uint64_t exynos4210_calc_affinity(int cpu)
+uint64_t exynos4210_calc_affinity(int cpu)
 {
     uint64_t mp_affinity;
 

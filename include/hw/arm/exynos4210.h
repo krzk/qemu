@@ -103,6 +103,7 @@ typedef struct Exynos4210State {
 void exynos4210_write_secondary(ARMCPU *cpu,
         const struct arm_boot_info *info);
 
+uint64_t exynos4210_calc_affinity(int cpu);
 Exynos4210State *exynos4210_init(MemoryRegion *system_mem,
         unsigned long ram_size);
 
