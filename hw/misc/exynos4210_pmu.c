@@ -25,6 +25,8 @@
  */
 
 #include "qemu/osdep.h"
+#include "arm-powerctl.h"
+#include "hw/arm/exynos4210.h"
 #include "hw/sysbus.h"
 
 #ifndef DEBUG_PMU
@@ -397,6 +399,24 @@ typedef struct Exynos4210PmuState {
     uint32_t reg[PMU_NUM_OF_REGISTERS];
 } Exynos4210PmuState;
 
+static void exynos4210_cpu1_power(Exynos4210PmuState *s, bool on)
+{
+    fprintf(stderr, "Powering CPU1 -> %d\n", on);
+    if (on) {
+        fprintf(stderr, "Powering up\n");
+        s->iomem.ops->write(s, ARM_CORE1_STATUS, 0x00030003, 4);
+        //arm_set_cpu_on(1, entry, context_id, 2, false);
+    } else {
+        int ret;
+
+        ret = arm_set_cpu_off(exynos4210_calc_affinity(1));
+        fprintf(stderr, "Powered down CPU1 - %d\n", ret);
+        /* Reflect this in status register */
+        s->iomem.ops->write(s, ARM_CORE1_STATUS, 0x00030000, 4);
+    }
+
+}
+
 static uint64_t exynos4210_pmu_read(void *opaque, hwaddr offset,
                                     unsigned size)
 {
@@ -428,6 +448,9 @@ static void exynos4210_pmu_write(void *opaque, hwaddr offset,
             PRINT_DEBUG_EXTEND("%s <0x%04x> <- 0x%04x\n", reg_p->name,
                     (uint32_t)offset, (uint32_t)val);
             s->reg[i] = val;
+            if (offset == ARM_CORE1_CONFIGURATION) {
+                exynos4210_cpu1_power(s, val == 0x3lu);
+            }
             return;
         }
         reg_p++;
