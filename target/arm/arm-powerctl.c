@@ -37,6 +37,7 @@ CPUState *arm_get_cpu_by_id(uint64_t id)
     CPU_FOREACH(cpu) {
         ARMCPU *armcpu = ARM_CPU(cpu);
 
+            fprintf(stderr, "CPU %lu == %lu\n", armcpu->mp_affinity, id);
         if (armcpu->mp_affinity == id) {
             return cpu;
         }

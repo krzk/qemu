@@ -409,6 +409,8 @@ void HELPER(wfi)(CPUARMState *env)
         return;
     }
 
+    fprintf(stderr, "WFI, %d, %d, %u\n", cs->thread_id, cs->cpu_index, cs->halted);
+
     if (target_el) {
         env->pc -= 4;
         raise_exception(env, EXCP_UDEF, syn_wfx(1, 0xe, 0), target_el);
