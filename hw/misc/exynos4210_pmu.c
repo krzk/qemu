@@ -399,16 +399,61 @@ typedef struct Exynos4210PmuState {
     uint32_t reg[PMU_NUM_OF_REGISTERS];
 } Exynos4210PmuState;
 
+#include "hw/hw.h"
+#include "hw/arm/arm.h"
+#include "hw/arm/linux-boot-if.h"
+#include "qapi/error.h"
+#include <libfdt.h>
+#include "hw/hw.h"
+#include "hw/arm/arm.h"
+#include "hw/arm/linux-boot-if.h"
+#include "sysemu/kvm.h"
+#include "sysemu/sysemu.h"
+#include "sysemu/numa.h"
+#include "hw/boards.h"
+#include "hw/loader.h"
+#include "elf.h"
+#include "sysemu/device_tree.h"
+#include "qemu/config-file.h"
+#include "exec/address-spaces.h"
+
+
 static void exynos4210_cpu1_power(Exynos4210PmuState *s, bool on)
 {
     fprintf(stderr, "Powering CPU1 -> %d\n", on);
     if (on) {
         fprintf(stderr, "Powering up\n");
+        CPUState *cpu;
+        cpu = arm_get_cpu_by_id(exynos4210_calc_affinity(1));
+        if (!cpu) {
+            fprintf(stderr, "err wrong cpu power down\n");
+            return;
+        }
+
+        CPUARMState *env = (CPUARMState *) cpu->env_ptr;
+
+        for (int i=0; i<16; i++)
+            fprintf(stderr, "regs[%d]=0x%x\n", i, env->regs[i]);
+        fprintf(stderr, "regs spsr = 0x%x\n", env->spsr);
+
+        fprintf(stderr, "Powering up\n");
+
         s->iomem.ops->write(s, ARM_CORE1_STATUS, 0x00030003, 4);
-        //arm_set_cpu_on(1, entry, context_id, 2, false);
+        arm_set_cpu_on(exynos4210_calc_affinity(1), env->regs[0] + 8, 0, 2, false);
     } else {
         int ret;
+        CPUState *cpu;
+        cpu = arm_get_cpu_by_id(exynos4210_calc_affinity(1));
+        if (!cpu) {
+            fprintf(stderr, "err wrong cpu power down\n");
+            return;
+        }
 
+        CPUARMState *env = (CPUARMState *) cpu->env_ptr;
+
+        for (int i=0; i<16; i++)
+            fprintf(stderr, "regs[%d]=0x%x\n", i, env->regs[i]);
+        fprintf(stderr, "regs spsr = 0x%x\n", env->spsr);
         ret = arm_set_cpu_off(exynos4210_calc_affinity(1));
         fprintf(stderr, "Powered down CPU1 - %d\n", ret);
         /* Reflect this in status register */
