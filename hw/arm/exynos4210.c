@@ -163,7 +163,6 @@ static uint64_t exynos4210_calc_affinity(int cpu)
 
 static void exynos4210_init(Object *obj)
 {
-    MemoryRegion *system_mem = get_system_memory();
     Exynos4210State *s = EXYNOS4210(obj);
     qemu_irq gate_irq[EXYNOS4210_NCPUS][EXYNOS4210_IRQ_GATE_NINPUTS];
     SysBusDevice *busdev;
@@ -271,33 +270,22 @@ static void exynos4210_init(Object *obj)
     /*** Memory ***/
 
     /* Chip-ID and OMR */
-    memory_region_init_io(&s->chipid_mem, NULL, &exynos4210_chipid_and_omr_ops,
-        NULL, "exynos4210.chipid", sizeof(chipid_and_omr));
-    memory_region_add_subregion(system_mem, EXYNOS4210_CHIPID_ADDR,
-                                &s->chipid_mem);
+//    memory_region_init_io(&s->chipid_mem, NULL, &exynos4210_chipid_and_omr_ops,
+//        NULL, "exynos4210.chipid", sizeof(chipid_and_omr));
 
     /* Internal ROM */
-    memory_region_init_ram(&s->irom_mem, NULL, "exynos4210.irom",
-                           EXYNOS4210_IROM_SIZE, &error_fatal);
-    vmstate_register_ram_global(&s->irom_mem);
-    memory_region_set_readonly(&s->irom_mem, true);
-    memory_region_add_subregion(system_mem, EXYNOS4210_IROM_BASE_ADDR,
-                                &s->irom_mem);
+    //memory_region_init_ram(&s->irom_mem, NULL, "exynos4210.irom",
+      //                     EXYNOS4210_IROM_SIZE, &error_fatal);
+
     /* mirror of iROM */
-    memory_region_init_alias(&s->irom_alias_mem, NULL, "exynos4210.irom_alias",
-                             &s->irom_mem,
-                             0,
-                             EXYNOS4210_IROM_SIZE);
-    memory_region_set_readonly(&s->irom_alias_mem, true);
-    memory_region_add_subregion(system_mem, EXYNOS4210_IROM_MIRROR_BASE_ADDR,
-                                &s->irom_alias_mem);
+   // memory_region_init_alias(&s->irom_alias_mem, NULL, "exynos4210.irom_alias",
+    //                         &s->irom_mem,
+    //                         0,
+    //                         EXYNOS4210_IROM_SIZE);
 
     /* Internal RAM */
-    memory_region_init_ram(&s->iram_mem, NULL, "exynos4210.iram",
-                           EXYNOS4210_IRAM_SIZE, &error_fatal);
-    vmstate_register_ram_global(&s->iram_mem);
-    memory_region_add_subregion(system_mem, EXYNOS4210_IRAM_BASE_ADDR,
-                                &s->iram_mem);
+    //memory_region_init_ram(&s->iram_mem, NULL, "exynos4210.iram",
+    //                       EXYNOS4210_IRAM_SIZE, &error_fatal);
 
    /* PMU.
     * The only reason of existence at the moment is that secondary CPU boot
@@ -406,11 +394,50 @@ static void exynos4210_init(Object *obj)
             s->irq_table[exynos4210_get_irq(28, 3)]);
 }
 
+static void exynos4210_realize(DeviceState *dev, Error **errp)
+{
+    MemoryRegion *system_mem = get_system_memory();
+    Exynos4210State *s = EXYNOS4210(dev);
+
+    memory_region_init_io(&s->chipid_mem, NULL, &exynos4210_chipid_and_omr_ops,
+        NULL, "exynos4210.chipid", sizeof(chipid_and_omr));
+
+    /* Internal ROM */
+    memory_region_init_ram(&s->irom_mem, NULL, "exynos4210.irom",
+                           EXYNOS4210_IROM_SIZE, &error_fatal);
+    vmstate_register_ram_global(&s->irom_mem);
+    memory_region_set_readonly(&s->irom_mem, true);
+    memory_region_add_subregion(system_mem, EXYNOS4210_IROM_BASE_ADDR,
+                                &s->irom_mem);
+
+    /* mirror of iROM */
+    memory_region_init_alias(&s->irom_alias_mem, NULL, "exynos4210.irom_alias",
+                             &s->irom_mem, 0, EXYNOS4210_IROM_SIZE);
+    memory_region_set_readonly(&s->irom_alias_mem, true);
+    memory_region_add_subregion(system_mem, EXYNOS4210_IROM_MIRROR_BASE_ADDR,
+                                &s->irom_alias_mem);
+
+    /* Internal RAM */
+    memory_region_init_ram(&s->iram_mem, NULL, "exynos4210.iram",
+                           EXYNOS4210_IRAM_SIZE, &error_fatal);
+    vmstate_register_ram_global(&s->iram_mem);
+    memory_region_add_subregion(system_mem, EXYNOS4210_IRAM_BASE_ADDR,
+                                &s->iram_mem);
+}
+
+static void exynos4210_class_init(ObjectClass *oc, void *data)
+{
+    DeviceClass *dc = DEVICE_CLASS(oc);
+
+    dc->realize = exynos4210_realize;
+}
+
 static const TypeInfo exynos4210_type_info = {
     .name = TYPE_EXYNOS4210,
     .parent = TYPE_DEVICE,
     .instance_size = sizeof(Exynos4210State),
     .instance_init = exynos4210_init,
+    .class_init = exynos4210_class_init,
 };
 
 static void exynos4210_register_types(void)
