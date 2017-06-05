@@ -88,10 +88,49 @@ typedef struct Exynos4210Irq {
     qemu_irq board_irqs[EXYNOS4210_MAX_INT_COMBINER_IN_IRQ];
 } Exynos4210Irq;
 
+#define TYPE_EXYNOS4210_GIC "exynos4210.gic"
+#define EXYNOS4210_GIC(obj) \
+    OBJECT_CHECK(Exynos4210GicState, (obj), TYPE_EXYNOS4210_GIC)
+
+typedef struct {
+    SysBusDevice parent_obj;
+
+    MemoryRegion cpu_container;
+    MemoryRegion dist_container;
+    MemoryRegion cpu_alias[EXYNOS4210_NCPUS];
+    MemoryRegion dist_alias[EXYNOS4210_NCPUS];
+    uint32_t num_cpu;
+    DeviceState *gic;
+} Exynos4210GicState;
+
+/* IRQ OR Gate struct.
+ *
+ * This device models an OR gate. There are n_in input qdev gpio lines and one
+ * output sysbus IRQ line. The output IRQ level is formed as OR between all
+ * gpio inputs.
+ */
+
+#define TYPE_EXYNOS4210_IRQ_GATE "exynos4210.irq_gate"
+#define EXYNOS4210_IRQ_GATE(obj) \
+    OBJECT_CHECK(Exynos4210IRQGateState, (obj), TYPE_EXYNOS4210_IRQ_GATE)
+
+typedef struct Exynos4210IRQGateState {
+    SysBusDevice parent_obj;
+
+    uint32_t n_in;      /* inputs amount */
+    uint32_t *level;    /* input levels */
+    qemu_irq out;       /* output IRQ */
+} Exynos4210IRQGateState;
+
+
 typedef struct Exynos4210State {
     DeviceState parent_obj;
 
     ARMCPU *cpu[EXYNOS4210_NCPUS];
+
+    A9MPPrivState a9mpcore;
+    Exynos4210GicState gic;
+    Exynos4210IRQGateState irq_gate[EXYNOS4210_NCPUS];
     Exynos4210Irq irqs;
     qemu_irq *irq_table;
 
