@@ -197,32 +197,14 @@ static void exynos4210_init(Object *obj)
 
     /* IRQ Gate */
     for (i = 0; i < EXYNOS4210_NCPUS; i++) {
-        dev = qdev_create(NULL, "exynos4210.irq_gate");
-        qdev_prop_set_uint32(dev, "n_in", EXYNOS4210_IRQ_GATE_NINPUTS);
-        qdev_init_nofail(dev);
-        /* Get IRQ Gate input in gate_irq */
-        for (n = 0; n < EXYNOS4210_IRQ_GATE_NINPUTS; n++) {
-            gate_irq[i][n] = qdev_get_gpio_in(dev, n);
-        }
-        busdev = SYS_BUS_DEVICE(dev);
-
-        /* Connect IRQ Gate output to CPU's IRQ line */
-        sysbus_connect_irq(busdev, 0,
-                           qdev_get_gpio_in(DEVICE(s->cpu[i]), ARM_CPU_IRQ));
+        object_initialize(&s->irq_gate[i], sizeof(s->irq_gate[i]),
+                          TYPE_EXYNOS4210_IRQ_GATE);
+        qdev_set_parent_bus(DEVICE(&s->irq_gate[i]), sysbus_get_default());
     }
 
     /* Private memory region and Internal GIC */
-    dev = qdev_create(NULL, TYPE_A9MPCORE_PRIV);
-    qdev_prop_set_uint32(dev, "num-cpu", EXYNOS4210_NCPUS);
-    qdev_init_nofail(dev);
-    busdev = SYS_BUS_DEVICE(dev);
-    sysbus_mmio_map(busdev, 0, EXYNOS4210_SMP_PRIVATE_BASE_ADDR);
-    for (n = 0; n < EXYNOS4210_NCPUS; n++) {
-        sysbus_connect_irq(busdev, n, gate_irq[n][0]);
-    }
-    for (n = 0; n < EXYNOS4210_INT_GIC_NIRQ; n++) {
-        s->irqs.int_gic_irq[n] = qdev_get_gpio_in(dev, n);
-    }
+    object_initialize(&s->a9mpcore, sizeof(s->a9mpcore), TYPE_A9MPCORE_PRIV);
+    qdev_set_parent_bus(DEVICE(&s->a9mpcore), sysbus_get_default());
 
     /* Cache controller */
     sysbus_create_simple("l2x0", EXYNOS4210_L2X0_BASE_ADDR, NULL);
@@ -398,6 +380,35 @@ static void exynos4210_realize(DeviceState *dev, Error **errp)
 {
     MemoryRegion *system_mem = get_system_memory();
     Exynos4210State *s = EXYNOS4210(dev);
+    SysBusDevice *busdev;
+    DeviceState *dev;
+
+    /* IRQ Gate */
+    for (i = 0; i < EXYNOS4210_NCPUS; i++) {
+        dev = &s->irq_gate[i];
+        qdev_prop_set_uint32(dev, "n_in", EXYNOS4210_IRQ_GATE_NINPUTS);
+        qdev_init_nofail(dev);
+        /* Get IRQ Gate input in gate_irq */
+        for (n = 0; n < EXYNOS4210_IRQ_GATE_NINPUTS; n++) {
+            gate_irq[i][n] = qdev_get_gpio_in(dev, n);
+        }
+        /* Connect IRQ Gate output to CPU's IRQ line */
+        sysbus_connect_irq(SYS_BUS_DEVICE(dev), 0,
+                           qdev_get_gpio_in(DEVICE(s->cpu[i]), ARM_CPU_IRQ));
+    }
+
+    dev = &s->a9mpcore;
+    qdev_prop_set_uint32(dev, "num-cpu", EXYNOS4210_NCPUS);
+    qdev_init_nofail(dev);
+    busdev = SYS_BUS_DEVICE(dev);
+    sysbus_mmio_map(busdev, 0, EXYNOS4210_SMP_PRIVATE_BASE_ADDR);
+    for (n = 0; n < EXYNOS4210_NCPUS; n++) {
+        sysbus_connect_irq(busdev, n, gate_irq[n][0]);
+    }
+    for (n = 0; n < EXYNOS4210_INT_GIC_NIRQ; n++) {
+        s->irqs.int_gic_irq[n] = qdev_get_gpio_in(dev, n);
+    }
+
 
     memory_region_init_io(&s->chipid_mem, NULL, &exynos4210_chipid_and_omr_ops,
         NULL, "exynos4210.chipid", sizeof(chipid_and_omr));
