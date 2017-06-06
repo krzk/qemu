@@ -209,41 +209,12 @@ static void exynos4210_init(Object *obj)
     sysbus_create_simple("l2x0", EXYNOS4210_L2X0_BASE_ADDR, NULL);
 
     /* External GIC */
-    dev = qdev_create(NULL, "exynos4210.gic");
-    qdev_prop_set_uint32(dev, "num-cpu", EXYNOS4210_NCPUS);
-    qdev_init_nofail(dev);
-    busdev = SYS_BUS_DEVICE(dev);
-    /* Map CPU interface */
-    sysbus_mmio_map(busdev, 0, EXYNOS4210_EXT_GIC_CPU_BASE_ADDR);
-    /* Map Distributer interface */
-    sysbus_mmio_map(busdev, 1, EXYNOS4210_EXT_GIC_DIST_BASE_ADDR);
-    for (n = 0; n < EXYNOS4210_NCPUS; n++) {
-        sysbus_connect_irq(busdev, n, gate_irq[n][1]);
-    }
-    for (n = 0; n < EXYNOS4210_EXT_GIC_NIRQ; n++) {
-        s->irqs.ext_gic_irq[n] = qdev_get_gpio_in(dev, n);
-    }
+    object_initialize(&s->gic, sizeof(s->gic), TYPE_EXYNOS4210_GIC);
+    qdev_set_parent_bus(DEVICE(&s->gic), sysbus_get_default());
 
     /* Internal Interrupt Combiner */
-    dev = qdev_create(NULL, "exynos4210.combiner");
-    qdev_init_nofail(dev);
-    busdev = SYS_BUS_DEVICE(dev);
-    for (n = 0; n < EXYNOS4210_MAX_INT_COMBINER_OUT_IRQ; n++) {
-        sysbus_connect_irq(busdev, n, s->irqs.int_gic_irq[n]);
-    }
-    exynos4210_combiner_get_gpioin(&s->irqs, dev, 0);
-    sysbus_mmio_map(busdev, 0, EXYNOS4210_INT_COMBINER_BASE_ADDR);
-
-    /* External Interrupt Combiner */
-    dev = qdev_create(NULL, "exynos4210.combiner");
-    qdev_prop_set_uint32(dev, "external", 1);
-    qdev_init_nofail(dev);
-    busdev = SYS_BUS_DEVICE(dev);
-    for (n = 0; n < EXYNOS4210_MAX_INT_COMBINER_OUT_IRQ; n++) {
-        sysbus_connect_irq(busdev, n, s->irqs.ext_gic_irq[n]);
-    }
-    exynos4210_combiner_get_gpioin(&s->irqs, dev, 1);
-    sysbus_mmio_map(busdev, 0, EXYNOS4210_EXT_COMBINER_BASE_ADDR);
+    object_initialize(&s->combiner, sizeof(s->combiner), TYPE_EXYNOS4210_GIC);
+    qdev_set_parent_bus(DEVICE(&s->combiner), sysbus_get_default());
 
     /* Initialize board IRQs. */
     exynos4210_init_board_irqs(&s->irqs);
@@ -408,6 +379,29 @@ static void exynos4210_realize(DeviceState *dev, Error **errp)
         s->irqs.int_gic_irq[n] = qdev_get_gpio_in(dev, n);
     }
 
+    dev = &s->gic;
+    qdev_prop_set_uint32(dev, "num-cpu", EXYNOS4210_NCPUS);
+    qdev_init_nofail(dev);
+    busdev = SYS_BUS_DEVICE(dev);
+    /* Map CPU interface */
+    sysbus_mmio_map(busdev, 0, EXYNOS4210_EXT_GIC_CPU_BASE_ADDR);
+    /* Map Distributer interface */
+    sysbus_mmio_map(busdev, 1, EXYNOS4210_EXT_GIC_DIST_BASE_ADDR);
+    for (n = 0; n < EXYNOS4210_NCPUS; n++) {
+        sysbus_connect_irq(busdev, n, gate_irq[n][1]);
+    }
+    for (n = 0; n < EXYNOS4210_EXT_GIC_NIRQ; n++) {
+        s->irqs.ext_gic_irq[n] = qdev_get_gpio_in(dev, n);
+    }
+
+    dev = &s->combiner;
+    qdev_init_nofail(dev);
+    busdev = SYS_BUS_DEVICE(dev);
+    for (n = 0; n < EXYNOS4210_MAX_INT_COMBINER_OUT_IRQ; n++) {
+        sysbus_connect_irq(busdev, n, s->irqs.int_gic_irq[n]);
+    }
+    exynos4210_combiner_get_gpioin(&s->irqs, dev, 0);
+    sysbus_mmio_map(busdev, 0, EXYNOS4210_INT_COMBINER_BASE_ADDR);
 
     memory_region_init_io(&s->chipid_mem, NULL, &exynos4210_chipid_and_omr_ops,
         NULL, "exynos4210.chipid", sizeof(chipid_and_omr));
