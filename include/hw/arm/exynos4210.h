@@ -123,6 +123,39 @@ typedef struct Exynos4210IRQGateState {
     qemu_irq out;       /* output IRQ */
 } Exynos4210IRQGateState;
 
+/*
+ * State for each output signal of internal combiner
+ */
+typedef struct Exynos4210CombinerGroupState {
+    uint8_t src_mask;            /* 1 - source enabled, 0 - disabled */
+    uint8_t src_pending;        /* Pending source interrupts before masking */
+} Exynos4210CombinerGroupState;
+
+/* Internal Interrupt Combiner Groups number */
+#define EXYNOS4210_COMBINER_IIC_NGRP            64
+/* Internal Interrupt Combiner Interrupts number */
+#define EXYNOS4210_COMBINER_IIC_NIRQ            (EXYNOS4210_COMBINER_IIC_NGRP * 8)
+/* Size of memory mapped region */
+#define EXYNOS4210_COMBINER_IIC_REGION_SIZE     0x108
+#define EXYNOS4210_COMBINER_IIC_REGSET_SIZE     0x41
+
+#define TYPE_EXYNOS4210_COMBINER "exynos4210.combiner"
+#define EXYNOS4210_COMBINER(obj) \
+    OBJECT_CHECK(Exynos4210CombinerState, (obj), TYPE_EXYNOS4210_COMBINER)
+
+typedef struct Exynos4210CombinerState {
+    SysBusDevice parent_obj;
+
+    MemoryRegion iomem;
+
+    struct Exynos4210CombinerGroupState group[EXYNOS4210_COMBINER_IIC_NGRP];
+    uint32_t reg_set[EXYNOS4210_COMBINER_IIC_REGSET_SIZE];
+    uint32_t icipsr[2];
+    uint32_t external;          /* 1 means that this combiner is external */
+
+    qemu_irq output_irq[EXYNOS4210_COMBINER_IIC_NGRP];
+} Exynos4210CombinerState;
+
 
 typedef struct Exynos4210State {
     DeviceState parent_obj;
@@ -132,6 +165,7 @@ typedef struct Exynos4210State {
     A9MPPrivState a9mpcore;
     Exynos4210GicState gic;
     Exynos4210IRQGateState irq_gate[EXYNOS4210_NCPUS];
+    Exynos4210CombinerState combiner;
     Exynos4210Irq irqs;
     qemu_irq *irq_table;
 

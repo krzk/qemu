@@ -42,45 +42,13 @@
 #define DPRINTF(fmt, ...) do {} while (0)
 #endif
 
-#define    IIC_NGRP        64            /* Internal Interrupt Combiner
-                                            Groups number */
-#define    IIC_NIRQ        (IIC_NGRP * 8)/* Internal Interrupt Combiner
-                                            Interrupts number */
-#define IIC_REGION_SIZE    0x108         /* Size of memory mapped region */
-#define IIC_REGSET_SIZE    0x41
-
-/*
- * State for each output signal of internal combiner
- */
-typedef struct CombinerGroupState {
-    uint8_t src_mask;            /* 1 - source enabled, 0 - disabled */
-    uint8_t src_pending;        /* Pending source interrupts before masking */
-} CombinerGroupState;
-
-#define TYPE_EXYNOS4210_COMBINER "exynos4210.combiner"
-#define EXYNOS4210_COMBINER(obj) \
-    OBJECT_CHECK(Exynos4210CombinerState, (obj), TYPE_EXYNOS4210_COMBINER)
-
-typedef struct Exynos4210CombinerState {
-    SysBusDevice parent_obj;
-
-    MemoryRegion iomem;
-
-    struct CombinerGroupState group[IIC_NGRP];
-    uint32_t reg_set[IIC_REGSET_SIZE];
-    uint32_t icipsr[2];
-    uint32_t external;          /* 1 means that this combiner is external */
-
-    qemu_irq output_irq[IIC_NGRP];
-} Exynos4210CombinerState;
-
 static const VMStateDescription vmstate_exynos4210_combiner_group_state = {
     .name = "exynos4210.combiner.groupstate",
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (VMStateField[]) {
-        VMSTATE_UINT8(src_mask, CombinerGroupState),
-        VMSTATE_UINT8(src_pending, CombinerGroupState),
+        VMSTATE_UINT8(src_mask, Exynos4210CombinerGroupState),
+        VMSTATE_UINT8(src_pending, Exynos4210CombinerGroupState),
         VMSTATE_END_OF_LIST()
     }
 };
@@ -90,10 +58,12 @@ static const VMStateDescription vmstate_exynos4210_combiner = {
     .version_id = 1,
     .minimum_version_id = 1,
     .fields = (VMStateField[]) {
-        VMSTATE_STRUCT_ARRAY(group, Exynos4210CombinerState, IIC_NGRP, 0,
-                vmstate_exynos4210_combiner_group_state, CombinerGroupState),
+        VMSTATE_STRUCT_ARRAY(group, Exynos4210CombinerState,
+                             EXYNOS4210_COMBINER_IIC_NGRP, 0,
+                             vmstate_exynos4210_combiner_group_state,
+                             Exynos4210CombinerGroupState),
         VMSTATE_UINT32_ARRAY(reg_set, Exynos4210CombinerState,
-                IIC_REGSET_SIZE),
+                             EXYNOS4210_COMBINER_IIC_REGSET_SIZE),
         VMSTATE_UINT32_ARRAY(icipsr, Exynos4210CombinerState, 2),
         VMSTATE_UINT32(external, Exynos4210CombinerState),
         VMSTATE_END_OF_LIST()
@@ -192,7 +162,7 @@ exynos4210_combiner_read(void *opaque, hwaddr offset, unsigned size)
     grp_quad_base_n = req_quad_base_n << 2;
     reg_n = (offset - (req_quad_base_n << 4)) >> 2;
 
-    if (req_quad_base_n >= IIC_NGRP) {
+    if (req_quad_base_n >= EXYNOS4210_COMBINER_IIC_NGRP) {
         /* Read of ICIPSR register */
         return s->icipsr[reg_n];
     }
@@ -219,7 +189,7 @@ exynos4210_combiner_read(void *opaque, hwaddr offset, unsigned size)
                 s->group[grp_quad_base_n + 3].src_pending) << 24;
         break;
     default:
-        if (offset >> 2 >= IIC_REGSET_SIZE) {
+        if (offset >> 2 >= EXYNOS4210_COMBINER_IIC_REGSET_SIZE) {
             hw_error("exynos4210.combiner: overflow of reg_set by 0x"
                     TARGET_FMT_plx "offset\n", offset);
         }
@@ -284,7 +254,7 @@ static void exynos4210_combiner_write(void *opaque, hwaddr offset,
     grp_quad_base_n = req_quad_base_n << 2;
     reg_n = (offset - (req_quad_base_n << 4)) >> 2;
 
-    if (req_quad_base_n >= IIC_NGRP) {
+    if (req_quad_base_n >= EXYNOS4210_COMBINER_IIC_NGRP) {
         hw_error("exynos4210.combiner: unallowed write access at offset 0x"
                 TARGET_FMT_plx "\n", offset);
         return;
@@ -296,7 +266,7 @@ static void exynos4210_combiner_write(void *opaque, hwaddr offset,
         return;
     }
 
-    if (offset >> 2 >= IIC_REGSET_SIZE) {
+    if (offset >> 2 >= EXYNOS4210_COMBINER_IIC_REGSET_SIZE) {
         hw_error("exynos4210.combiner: overflow of reg_set by 0x"
                 TARGET_FMT_plx "offset\n", offset);
     }
@@ -415,15 +385,15 @@ static void exynos4210_combiner_init(Object *obj)
 
     /* Allocate general purpose input signals and connect a handler to each of
      * them */
-    qdev_init_gpio_in(dev, exynos4210_combiner_handler, IIC_NIRQ);
+    qdev_init_gpio_in(dev, exynos4210_combiner_handler, EXYNOS4210_COMBINER_IIC_NIRQ);
 
     /* Connect SysBusDev irqs to device specific irqs */
-    for (i = 0; i < IIC_NGRP; i++) {
+    for (i = 0; i < EXYNOS4210_COMBINER_IIC_NGRP; i++) {
         sysbus_init_irq(sbd, &s->output_irq[i]);
     }
 
     memory_region_init_io(&s->iomem, obj, &exynos4210_combiner_ops, s,
-                          "exynos4210-combiner", IIC_REGION_SIZE);
+                          "exynos4210-combiner", EXYNOS4210_COMBINER_IIC_REGION_SIZE);
     sysbus_init_mmio(sbd, &s->iomem);
 }
 
