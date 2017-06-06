@@ -26,7 +26,6 @@
 #include "qemu-common.h"
 #include "qemu/log.h"
 #include "cpu.h"
-#include "hw/cpu/a9mpcore.h"
 #include "hw/boards.h"
 #include "sysemu/sysemu.h"
 #include "hw/sysbus.h"

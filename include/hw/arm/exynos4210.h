@@ -28,6 +28,7 @@
 #include "qemu-common.h"
 #include "exec/memory.h"
 #include "target/arm/cpu-qom.h"
+#include "hw/cpu/a9mpcore.h"
 
 #define TYPE_EXYNOS4210 "exynos4210"
 #define EXYNOS4210(obj) \
